@@ -182,7 +182,7 @@ async function getData() {
 	});
 
 	if (config.type == "uniapp-x" || config.type == "app") {
-		list = list.filter((e) => e.prefix.startsWith("/app"));
+		list = list.filter((e) => e.prefix.startsWith("/app") || e.prefix.startsWith("/admin"));
 	}
 }
 
