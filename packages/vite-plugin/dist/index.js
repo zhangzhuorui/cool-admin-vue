@@ -92,12 +92,68 @@
     function readFile(path, json) {
         try {
             const content = fs.readFileSync(path, "utf8");
-            return json
-                ? JSON.parse(content.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, ""))
-                : content;
+            return json ? JSON.parse(removeJsonComments(content)) : content;
         }
         catch (err) { }
         return "";
+    }
+    // 安全地移除JSON中的注释
+    function removeJsonComments(content) {
+        let result = "";
+        let inString = false;
+        let stringChar = "";
+        let escaped = false;
+        let i = 0;
+        while (i < content.length) {
+            const char = content[i];
+            const nextChar = content[i + 1];
+            // 处理字符串状态
+            if (!inString && (char === '"' || char === "'")) {
+                inString = true;
+                stringChar = char;
+                result += char;
+            }
+            else if (inString && char === stringChar && !escaped) {
+                inString = false;
+                stringChar = "";
+                result += char;
+            }
+            else if (inString) {
+                // 在字符串内，直接添加字符
+                result += char;
+                escaped = char === "\\" && !escaped;
+            }
+            else {
+                // 不在字符串内，检查注释
+                if (char === "/" && nextChar === "/") {
+                    // 单行注释，跳过到行尾
+                    while (i < content.length && content[i] !== "\n") {
+                        i++;
+                    }
+                    if (i < content.length) {
+                        result += content[i]; // 保留换行符
+                    }
+                }
+                else if (char === "/" && nextChar === "*") {
+                    // 多行注释，跳过到 */
+                    i += 2;
+                    while (i < content.length - 1) {
+                        if (content[i] === "*" && content[i + 1] === "/") {
+                            i += 2;
+                            break;
+                        }
+                        i++;
+                    }
+                    continue;
+                }
+                else {
+                    result += char;
+                    escaped = false;
+                }
+            }
+            i++;
+        }
+        return result;
     }
     // 写入文件
     function writeFile(path, data) {
@@ -137,6 +193,26 @@
     }
     function error(message) {
         console.log("\x1B[31m%s\x1B[0m", message);
+    }
+    /**
+     * 比较两个版本号
+     * @param version1 版本号1 (如: "1.2.3")
+     * @param version2 版本号2 (如: "1.2.4")
+     * @returns 1: version1 > version2, 0: 相等, -1: version1 < version2
+     */
+    function compareVersion(version1, version2) {
+        const v1Parts = version1.split(".").map(Number);
+        const v2Parts = version2.split(".").map(Number);
+        const maxLength = Math.max(v1Parts.length, v2Parts.length);
+        for (let i = 0; i < maxLength; i++) {
+            const v1Part = v1Parts[i] || 0;
+            const v2Part = v2Parts[i] || 0;
+            if (v1Part > v2Part)
+                return 1;
+            if (v1Part < v2Part)
+                return -1;
+        }
+        return 0;
     }
 
     /**
@@ -2176,6 +2252,70 @@ if (typeof window !== 'undefined') {
         return [postcssPlugin(), transformPlugin()];
     }
 
+    // 获取 tailwind.config.ts 中的颜色
+    function getTailwindColor() {
+        const config = readFile(rootDir("tailwind.config.ts"));
+        if (!config) {
+            return null;
+        }
+        try {
+            // 从配置文件中动态提取主色和表面色
+            const colorResult = {};
+            // 提取 getPrimary 调用中的颜色名称
+            const primaryMatch = config.match(/getPrimary\(["']([^"']+)["']\)/);
+            const primaryColorName = primaryMatch?.[1];
+            // 提取 getSurface 调用中的颜色名称
+            const surfaceMatch = config.match(/getSurface\(["']([^"']+)["']\)/);
+            const surfaceColorName = surfaceMatch?.[1];
+            if (primaryColorName) {
+                // 提取 PRIMARY_COLOR_PALETTES 中对应的调色板
+                const primaryPaletteMatch = config.match(new RegExp(`{\\s*name:\\s*["']${primaryColorName}["'],\\s*palette:\\s*({[^}]+})`, "s"));
+                if (primaryPaletteMatch) {
+                    // 解析调色板对象
+                    const paletteStr = primaryPaletteMatch[1];
+                    const paletteEntries = paletteStr.match(/(\d+):\s*["']([^"']+)["']/g);
+                    if (paletteEntries) {
+                        paletteEntries.forEach((entry) => {
+                            const match = entry.match(/(\d+):\s*["']([^"']+)["']/);
+                            if (match) {
+                                const [, key, value] = match;
+                                colorResult[`primary-${key}`] = value;
+                            }
+                        });
+                    }
+                }
+            }
+            if (surfaceColorName) {
+                // 提取 SURFACE_PALETTES 中对应的调色板
+                const surfacePaletteMatch = config.match(new RegExp(`{\\s*name:\\s*["']${surfaceColorName}["'],\\s*palette:\\s*({[^}]+})`, "s"));
+                if (surfacePaletteMatch) {
+                    // 解析调色板对象
+                    const paletteStr = surfacePaletteMatch[1];
+                    const paletteEntries = paletteStr.match(/(\d+):\s*["']([^"']+)["']/g);
+                    if (paletteEntries) {
+                        paletteEntries.forEach((entry) => {
+                            const match = entry.match(/(\d+):\s*["']([^"']+)["']/);
+                            if (match) {
+                                const [, key, value] = match;
+                                // 0 对应 surface，其他对应 surface-*
+                                const colorKey = key === "0" ? "surface" : `surface-${key}`;
+                                colorResult[colorKey] = value;
+                            }
+                        });
+                    }
+                }
+            }
+            return colorResult;
+        }
+        catch (error) {
+            return null;
+        }
+    }
+    // 获取版本号
+    function getVersion() {
+        const pkg = readFile(rootDir("package.json"), true);
+        return pkg?.version || "0.0.0";
+    }
     function codePlugin() {
         return [
             {
@@ -2184,12 +2324,21 @@ if (typeof window !== 'undefined') {
                 async transform(code, id) {
                     if (id.includes("/cool/ctx/index.ts")) {
                         const ctx = await createCtx();
-                        const theme = await readFile(rootDir("theme.json"), true);
+                        // 版本
+                        const version = getVersion();
+                        // 主题配置
+                        const theme = readFile(rootDir("theme.json"), true);
+                        // 主题配置
+                        ctx["theme"] = theme;
+                        if (compareVersion(version, "8.0.2") >= 0) {
+                            // 颜色值
+                            ctx["color"] = getTailwindColor();
+                        }
+                        // 安全字符映射
                         ctx["SAFE_CHAR_MAP_LOCALE"] = [];
                         for (const i in SAFE_CHAR_MAP_LOCALE) {
                             ctx["SAFE_CHAR_MAP_LOCALE"].push([i, SAFE_CHAR_MAP_LOCALE[i]]);
                         }
-                        ctx["theme"] = theme;
                         code = code.replace("const ctx = {}", `const ctx = ${JSON.stringify(ctx, null, 4)}`);
                     }
                     if (id.includes("/cool/service/index.ts")) {
