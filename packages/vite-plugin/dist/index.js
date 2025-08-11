@@ -56,6 +56,7 @@
             rpxRatio: 2,
             darkTextClass: "dark:text-surface-50",
         },
+        clean: false,
     };
 
     // 根目录
@@ -2407,6 +2408,12 @@ if (typeof window !== 'undefined') {
         config.type = options.type;
         // 请求地址
         config.reqUrl = getProxyTarget(options.proxy);
+        // 是否纯净版
+        config.clean = options.clean;
+        if (config.clean) {
+            // 默认设置为测试地址
+            config.reqUrl = "https://show.cool-admin.com/api";
+        }
         // 是否开启名称标签
         config.nameTag = options.nameTag ?? true;
         // svg

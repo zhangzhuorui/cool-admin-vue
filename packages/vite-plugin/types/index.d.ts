@@ -119,5 +119,7 @@ export declare namespace Config {
 			// 暗黑模式文本类名
 			darkTextClass?: string;
 		};
+		// 是否纯净版
+		clean: boolean;
 	}
 }

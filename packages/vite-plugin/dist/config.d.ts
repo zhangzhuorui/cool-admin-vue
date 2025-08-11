@@ -31,4 +31,5 @@ export declare const config: {
         rpxRatio: number;
         darkTextClass: string;
     };
+    clean: boolean;
 };
