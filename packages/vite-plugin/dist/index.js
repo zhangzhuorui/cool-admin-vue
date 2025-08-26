@@ -228,15 +228,25 @@
         // 保留 Service 类型定义前的内容
         let header = template.substring(0, startIndex);
         // 获取 Service 类型定义及其内容，去除换行和制表符
-        const serviceContent = template.substring(startIndex).replace(/\n|\t/g, "");
+        const serviceTemplateContent = template.substring(startIndex).replace(/\n|\t/g, "");
+        // 找到 Service 的内容部分
+        const serviceStartIndex = serviceTemplateContent.indexOf("{") + 1;
+        const serviceEndIndex = findClosingBrace(serviceTemplateContent, serviceStartIndex);
+        const serviceInnerContent = serviceTemplateContent
+            .substring(serviceStartIndex, serviceEndIndex)
+            .trim();
+        // 存储所有接口定义
+        const allInterfaces = new Map();
+        // 处理 Service 内容，保持原有结构但替换嵌套对象为接口引用
+        const serviceContent = buildCurrentLevelContent(serviceInnerContent);
+        // 递归收集所有需要生成的接口
+        flattenContent(serviceInnerContent, allInterfaces);
+        // 生成所有接口定义
         let interfaces = "";
-        let serviceFields = "";
-        // 解析内容并生成接口定义
-        parse(serviceContent).forEach(({ key, content, level }) => {
-            interfaces += `\nexport interface ${firstUpperCase(key)}Interface {${content}}\n`;
-            serviceFields += `${key}: ${firstUpperCase(key)}Interface;`;
+        allInterfaces.forEach((content, key) => {
+            interfaces += `\nexport interface ${firstUpperCase(key)}Interface { ${content} }\n`;
         });
-        return `${header}${interfaces}\nexport type Service = {${serviceFields}}`;
+        return `${header}${interfaces}\nexport type Service = { ${serviceContent} }`;
     }
     /**
      * 查找匹配的右花括号位置
@@ -261,40 +271,51 @@
         return currentIndex - 1;
     }
     /**
-     * 解析内容中的嵌套结构
-     * @param content - 要解析的内容字符串
-     * @returns 解析结果数组，包含解析出的键值对
+     * 递归收集所有需要生成的接口
+     * @param content - 要处理的内容
+     * @param allInterfaces - 存储所有接口定义的 Map
+     * @param parentFields - 父级字段数组（暂未使用）
      */
-    function parse(content, level = 0) {
-        // 匹配形如 xxx: { ... } 的结构
+    function flattenContent(content, allInterfaces, parentFields) {
         const interfacePattern = /(\w+)\s*:\s*\{/g;
-        const result = [];
         let match;
         while ((match = interfacePattern.exec(content)) !== null) {
+            const key = match[1];
             const startIndex = match.index + match[0].length;
             const endIndex = findClosingBrace(content, startIndex);
             if (endIndex > startIndex) {
-                let parsedContent = content.substring(startIndex, endIndex).trim();
-                // 处理嵌套结构
-                if (parsedContent.includes("{") && parsedContent.includes("}")) {
-                    const nestedInterfaces = parse(parsedContent, level + 1);
-                    // 替换嵌套的内容为接口引用
-                    if (nestedInterfaces.length > 0) {
-                        nestedInterfaces.forEach((nestedInterface) => {
-                            const pattern = `${nestedInterface.key}: {${nestedInterface.content}};`;
-                            const replacement = `${nestedInterface.key}: ${firstUpperCase(nestedInterface.key)}Interface`;
-                            parsedContent = parsedContent.replace(pattern, replacement);
-                        });
-                    }
-                }
-                // 将解析结果添加到数组开头
-                result.unshift({
-                    key: match[1],
-                    level,
-                    content: parsedContent,
-                });
+                const innerContent = content.substring(startIndex, endIndex).trim();
+                // 构建当前接口的内容，将嵌套对象替换为接口引用
+                const currentLevelContent = buildCurrentLevelContent(innerContent);
+                allInterfaces.set(key, currentLevelContent);
+                // 递归处理嵌套内容
+                flattenContent(innerContent, allInterfaces);
             }
         }
+    }
+    /**
+     * 构建当前级别的内容，将嵌套对象替换为接口引用
+     * @param content - 内容字符串
+     * @returns 处理后的内容
+     */
+    function buildCurrentLevelContent(content) {
+        const interfacePattern = /(\w+)\s*:\s*\{/g;
+        let result = content;
+        let match;
+        // 重置正则表达式的 lastIndex
+        interfacePattern.lastIndex = 0;
+        while ((match = interfacePattern.exec(content)) !== null) {
+            const key = match[1];
+            const startIndex = match.index + match[0].length;
+            const endIndex = findClosingBrace(content, startIndex);
+            if (endIndex > startIndex) {
+                const fullMatch = content.substring(match.index, endIndex + 1);
+                const replacement = `${key}: ${firstUpperCase(key)}Interface;`;
+                result = result.replace(fullMatch, replacement);
+            }
+        }
+        // 清理多余的分号和空格
+        result = result.replace(/;+/g, ";").replace(/\s+/g, " ").trim();
         return result;
     }
 
@@ -874,8 +895,9 @@
             printWidth: 100,
             trailingComma: "none",
         })
-            .catch(() => {
-            error(`[cool-eps] Failed to format /build/cool/eps.d.ts. Please delete the file and try again`);
+            .catch((err) => {
+            console.log(err);
+            error(`[cool-eps] File format error, please try again`);
             return null;
         });
     }
@@ -931,22 +953,25 @@
      * @returns {boolean} 是否有更新
      */
     function createJson() {
-        if (config.type == "uniapp-x") {
-            return false;
+        let data = [];
+        if (config.type != "uniapp-x") {
+            data = list.map((e) => {
+                return {
+                    prefix: e.prefix,
+                    name: e.name || "",
+                    api: e.api.map((apiItem) => ({
+                        name: apiItem.name,
+                        method: apiItem.method,
+                        path: apiItem.path,
+                    })),
+                    search: e.search,
+                };
+            });
         }
-        const arr = list.map((e) => {
-            return {
-                prefix: e.prefix,
-                name: e.name || "",
-                api: e.api.map((apiItem) => ({
-                    name: apiItem.name,
-                    method: apiItem.method,
-                    path: apiItem.path,
-                })),
-                search: e.search,
-            };
-        });
-        const content = JSON.stringify(arr);
+        else {
+            data = list;
+        }
+        const content = JSON.stringify(data);
         const local_content = readFile(getEpsPath("eps.json"));
         // 判断是否需要更新
         const isUpdate = content != local_content;
@@ -971,6 +996,9 @@
             for (const item of list) {
                 if (!checkName(item.name))
                     continue;
+                if (formatName(item.name) == "BusinessInterface") {
+                    console.log(111);
+                }
                 let t = `interface ${formatName(item.name)} {`;
                 // 合并 columns 和 pageColumns，去重
                 const columns = lodash.uniqBy(lodash.compact([...(item.columns || []), ...(item.pageColumns || [])]), "source");

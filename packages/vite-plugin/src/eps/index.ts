@@ -130,10 +130,9 @@ async function formatCode(text: string): Promise<string | null> {
 			printWidth: 100,
 			trailingComma: "none",
 		})
-		.catch(() => {
-			error(
-				`[cool-eps] Failed to format /build/cool/eps.d.ts. Please delete the file and try again`,
-			);
+		.catch((err) => {
+			console.log(err);
+			error(`[cool-eps] File format error, please try again`);
 			return null;
 		});
 }
@@ -191,24 +190,26 @@ async function getData() {
  * @returns {boolean} 是否有更新
  */
 function createJson(): boolean {
-	if (config.type == "uniapp-x") {
-		return false;
+	let data: any[] = [];
+
+	if (config.type != "uniapp-x") {
+		data = list.map((e) => {
+			return {
+				prefix: e.prefix,
+				name: e.name || "",
+				api: e.api.map((apiItem) => ({
+					name: apiItem.name,
+					method: apiItem.method,
+					path: apiItem.path,
+				})),
+				search: e.search,
+			};
+		});
+	} else {
+		data = list;
 	}
 
-	const arr = list.map((e) => {
-		return {
-			prefix: e.prefix,
-			name: e.name || "",
-			api: e.api.map((apiItem) => ({
-				name: apiItem.name,
-				method: apiItem.method,
-				path: apiItem.path,
-			})),
-			search: e.search,
-		};
-	});
-
-	const content = JSON.stringify(arr);
+	const content = JSON.stringify(data);
 	const local_content = readFile(getEpsPath("eps.json"));
 
 	// 判断是否需要更新
@@ -237,6 +238,10 @@ async function createDescribe({ list, service }: { list: Eps.Entity[]; service: 
 
 		for (const item of list) {
 			if (!checkName(item.name)) continue;
+
+			if (formatName(item.name) == "BusinessInterface") {
+				console.log(111);
+			}
 
 			let t = `interface ${formatName(item.name)} {`;
 
