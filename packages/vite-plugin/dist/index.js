@@ -2365,7 +2365,17 @@ if (typeof window !== 'undefined') {
                                 delete d[i];
                             }
                         }
-                        code = JSON.stringify(d);
+                        // 转字符串，不然会报错：Method too large
+                        if (id.includes("/locale/")) {
+                            let t = [];
+                            d.forEach(([a, b]) => {
+                                t.push(`${a}<__=__>${b}`);
+                            });
+                            code = JSON.stringify([[t.join("<__&__>")]]);
+                        }
+                        else {
+                            code = JSON.stringify(d);
+                        }
                     }
                     return {
                         code,

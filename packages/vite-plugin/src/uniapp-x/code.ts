@@ -156,7 +156,18 @@ export function codePlugin(): Plugin[] {
 						}
 					}
 
-					code = JSON.stringify(d);
+					// 转字符串，不然会报错：Method too large
+					if (id.includes("/locale/")) {
+						let t: string[] = [];
+
+						(d as string[][]).forEach(([a, b]) => {
+							t.push(`${a}<__=__>${b}`);
+						});
+
+						code = JSON.stringify([[t.join("<__&__>")]]);
+					} else {
+						code = JSON.stringify(d);
+					}
 				}
 
 				return {

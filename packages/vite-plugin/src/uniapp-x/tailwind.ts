@@ -94,9 +94,6 @@ function postcssPlugin(): Plugin {
 							{
 								postcssPlugin: "vite-cool-uniappx-class-mapping",
 								prepare() {
-									// 存储 Tailwind 颜色值
-									const colorValues: Record<string, string> = {};
-
 									return {
 										// 处理选择器规则
 										Rule(rule: any) {
