@@ -126,19 +126,19 @@ export function codePlugin(): Plugin[] {
 					);
 				}
 
-				if (id.includes("/cool/service/index.ts")) {
-					const eps = await createEps();
+				// if (id.includes("/cool/service/index.ts")) {
+				// 	const eps = await createEps();
 
-					if (eps.serviceCode) {
-						const { content, types } = eps.serviceCode;
-						const typeCode = `import type { ${uniq(types).join(", ")} } from '../types';`;
+				// 	if (eps.serviceCode) {
+				// 		const { content, types } = eps.serviceCode;
+				// 		const typeCode = `import type { ${uniq(types).join(", ")} } from '../types';`;
 
-						code =
-							typeCode +
-							"\n\n" +
-							code.replace("const service = {}", `const service = ${content}`);
-					}
-				}
+				// 		code =
+				// 			typeCode +
+				// 			"\n\n" +
+				// 			code.replace("const service = {}", `const service = ${content}`);
+				// 	}
+				// }
 
 				if (id.endsWith(".json")) {
 					const d = JSON.parse(code);

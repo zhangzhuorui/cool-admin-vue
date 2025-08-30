@@ -120,6 +120,6 @@ export declare namespace Config {
 			darkTextClass?: string;
 		};
 		// 是否纯净版
-		clean: boolean;
+		clean?: boolean;
 	}
 }

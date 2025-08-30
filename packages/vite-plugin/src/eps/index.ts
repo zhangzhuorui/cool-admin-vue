@@ -382,12 +382,21 @@ async function createDescribe({ list, service }: { list: Eps.Entity[]; service: 
 									}
 
 									// 方法描述
-									t += `
-										/**
-										 * ${a.summary || n}
-										 */
-										${n}(data${q.length == 1 ? "?" : ""}: ${q.join("")}): Promise<${res}>;
-									`;
+									if (config.type == "uniapp-x") {
+										t += `
+											/**
+											 * ${a.summary || n}
+											 */
+											${n}(data${q.length == 1 ? "?" : ""}: ${q.join("")}): Promise<any>;
+										`;
+									} else {
+										t += `
+											/**
+											 * ${a.summary || n}
+											 */
+											${n}(data${q.length == 1 ? "?" : ""}: ${q.join("")}): Promise<${res}>;
+										`;
+									}
 
 									if (!permission.includes(n)) {
 										permission.push(n);
@@ -436,6 +445,8 @@ async function createDescribe({ list, service }: { list: Eps.Entity[]; service: 
 		return `
 			type json = any;
 
+			${await createDict()}
+
 			interface PagePagination {
 				size: number;
 				page: number;
@@ -464,8 +475,6 @@ async function createDescribe({ list, service }: { list: Eps.Entity[]; service: 
 			}`)}
 
 			${noUniappX("type Request = (options: RequestOptions) => Promise<any>;")}
-
-			${await createDict()}
 
 			type Service = {
 				${noUniappX("request: Request;")}
@@ -661,35 +670,13 @@ function createServiceCode(): { content: string; types: string[] } {
 									types.push(item.name);
 								}
 
-								// 返回类型
-								let res = "";
-
-								// 实体名
-								const en = item.name || "any";
-
-								switch (a.path) {
-									case "/page":
-										res = `${name}PageResponse`;
-										types.push(res);
-										break;
-									case "/list":
-										res = `${en}[]`;
-										break;
-									case "/info":
-										res = en;
-										break;
-									default:
-										res = "any";
-										break;
-								}
-
 								// 方法描述
 								t += `
 									/**
 									 * ${a.summary || n}
 									 */
-									${n}(data${q.length == 1 ? "?" : ""}: ${q.join("")})${noUniappX(`: Promise<${res}>`)} {
-										return request<${res}>({
+									${n}(data?: any): Promise<any> {
+										return request({
 											url: "/${d[i].namespace}${a.path}",
 											method: "${(a.method || "get").toLocaleUpperCase()}",
 											data,

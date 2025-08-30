@@ -1112,12 +1112,22 @@
                                                 break;
                                         }
                                         // 方法描述
-                                        t += `
-										/**
-										 * ${a.summary || n}
-										 */
-										${n}(data${q.length == 1 ? "?" : ""}: ${q.join("")}): Promise<${res}>;
-									`;
+                                        if (config.type == "uniapp-x") {
+                                            t += `
+											/**
+											 * ${a.summary || n}
+											 */
+											${n}(data${q.length == 1 ? "?" : ""}: ${q.join("")}): Promise<any>;
+										`;
+                                        }
+                                        else {
+                                            t += `
+											/**
+											 * ${a.summary || n}
+											 */
+											${n}(data${q.length == 1 ? "?" : ""}: ${q.join("")}): Promise<${res}>;
+										`;
+                                        }
                                         if (!permission.includes(n)) {
                                             permission.push(n);
                                         }
@@ -1159,6 +1169,8 @@
             return `
 			type json = any;
 
+			${await createDict()}
+
 			interface PagePagination {
 				size: number;
 				page: number;
@@ -1187,8 +1199,6 @@
 			}`)}
 
 			${noUniappX("type Request = (options: RequestOptions) => Promise<any>;")}
-
-			${await createDict()}
 
 			type Service = {
 				${noUniappX("request: Request;")}
@@ -1354,32 +1364,13 @@
                                     if (item.name) {
                                         types.push(item.name);
                                     }
-                                    // 返回类型
-                                    let res = "";
-                                    // 实体名
-                                    const en = item.name || "any";
-                                    switch (a.path) {
-                                        case "/page":
-                                            res = `${name}PageResponse`;
-                                            types.push(res);
-                                            break;
-                                        case "/list":
-                                            res = `${en}[]`;
-                                            break;
-                                        case "/info":
-                                            res = en;
-                                            break;
-                                        default:
-                                            res = "any";
-                                            break;
-                                    }
                                     // 方法描述
                                     t += `
 									/**
 									 * ${a.summary || n}
 									 */
-									${n}(data${q.length == 1 ? "?" : ""}: ${q.join("")})${noUniappX(`: Promise<${res}>`)} {
-										return request<${res}>({
+									${n}(data?: any): Promise<any> {
+										return request({
 											url: "/${d[i].namespace}${a.path}",
 											method: "${(a.method || "get").toLocaleUpperCase()}",
 											data,
@@ -2370,17 +2361,17 @@ if (typeof window !== 'undefined') {
                         }
                         code = code.replace("const ctx = {}", `const ctx = ${JSON.stringify(ctx, null, 4)}`);
                     }
-                    if (id.includes("/cool/service/index.ts")) {
-                        const eps = await createEps();
-                        if (eps.serviceCode) {
-                            const { content, types } = eps.serviceCode;
-                            const typeCode = `import type { ${lodash.uniq(types).join(", ")} } from '../types';`;
-                            code =
-                                typeCode +
-                                    "\n\n" +
-                                    code.replace("const service = {}", `const service = ${content}`);
-                        }
-                    }
+                    // if (id.includes("/cool/service/index.ts")) {
+                    // 	const eps = await createEps();
+                    // 	if (eps.serviceCode) {
+                    // 		const { content, types } = eps.serviceCode;
+                    // 		const typeCode = `import type { ${uniq(types).join(", ")} } from '../types';`;
+                    // 		code =
+                    // 			typeCode +
+                    // 			"\n\n" +
+                    // 			code.replace("const service = {}", `const service = ${content}`);
+                    // 	}
+                    // }
                     if (id.endsWith(".json")) {
                         const d = JSON.parse(code);
                         for (let i in d) {
@@ -2446,11 +2437,13 @@ if (typeof window !== 'undefined') {
         config.type = options.type;
         // 请求地址
         config.reqUrl = getProxyTarget(options.proxy);
-        // 是否纯净版
-        config.clean = options.clean;
-        if (config.clean) {
-            // 默认设置为测试地址
-            config.reqUrl = "https://show.cool-admin.com/api";
+        if (config.type == "uniapp-x") {
+            // 是否纯净版
+            config.clean = options.clean ?? true;
+            if (config.clean) {
+                // 默认设置为测试地址
+                config.reqUrl = "https://show.cool-admin.com/api";
+            }
         }
         // 是否开启名称标签
         config.nameTag = options.nameTag ?? true;
@@ -2475,6 +2468,10 @@ if (typeof window !== 'undefined') {
             if (mapping) {
                 lodash.merge(config.eps.mapping, mapping);
             }
+        }
+        // 如果类型为 uniapp-x，则关闭 eps
+        if (config.type == "uniapp-x") {
+            config.eps.enable = false;
         }
         // tailwind
         if (options.tailwind) {
