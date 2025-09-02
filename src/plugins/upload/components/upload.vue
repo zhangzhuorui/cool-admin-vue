@@ -1,428 +1,642 @@
 <template>
-	<el-button :icon="icon" :disabled="disabled" :type="type" @click="open">
-		{{ $t('导入') }}
-	</el-button>
-
-	<cl-form ref="Form">
-		<template #slot-upload>
-			<div v-if="!upload.filename" class="upload">
-				<div class="tips" v-if="template">
-					<span>{{ tips }}</span>
-					<el-button type="primary" text bg @click="download">{{
-						$t('下载模版')
-					}}</el-button>
-				</div>
-
-				<div class="inner">
-					<cl-upload
+	<div class="cl-upload__wrap" :class="[customClass]">
+		<div
+			class="cl-upload"
+			:class="[
+				`cl-upload--${type}`,
+				{
+					'is-disabled': disabled,
+					'is-multiple': multiple,
+					'is-small': small
+				}
+			]"
+		>
+			<template v-if="!drag">
+				<div v-if="type == 'file'" class="cl-upload__file-btn">
+					<el-upload
 						:ref="setRefs('upload')"
-						drag
-						:limit-size="limitSize"
+						:drag="drag"
+						action=""
 						:accept="accept"
+						:show-file-list="false"
+						:before-upload="onBeforeUpload"
+						:http-request="httpRequest"
+						:headers="headers"
+						:multiple="multiple"
 						:disabled="disabled"
-						:auto-upload="false"
-						:before-upload="onUpload"
-						:size="[220, '100%']"
-					/>
-				</div>
-			</div>
-		</template>
-
-		<template #slot-list>
-			<div v-if="list.length" class="data-table">
-				<div class="head">
-					<el-button type="success" @click="clear">{{ $t('重新上传') }}</el-button>
-					<el-button
-						type="danger"
-						:disabled="table.selection.length == 0"
-						@click="table.del()"
 					>
-						{{ $t('批量删除') }}
-					</el-button>
+						<slot>
+							<el-button type="success">{{ text }}</el-button>
+						</slot>
+					</el-upload>
 				</div>
+			</template>
 
-				<div class="cl-table">
-					<el-table
-						border
-						:data="list"
-						max-height="600px"
-						@selection-change="table.onSelectionChange"
-						@row-click="
-							row => {
-								row._edit = true;
+			<!-- 列表 -->
+			<vue-draggable
+				v-if="showList"
+				v-model="list"
+				class="cl-upload__list"
+				tag="div"
+				ghost-class="Ghost"
+				drag-class="Drag"
+				item-key="uid"
+				:disabled="!draggable"
+				@end="update"
+			>
+				<!-- 触发器 -->
+				<template #footer>
+					<div v-if="(type == 'image' || drag) && isAdd" class="cl-upload__footer">
+						<el-upload
+							:ref="setRefs('upload')"
+							action=""
+							:drag="drag"
+							:accept="accept"
+							:show-file-list="false"
+							:before-upload="onBeforeUpload"
+							:http-request="httpRequest"
+							:headers="headers"
+							:multiple="multiple"
+							:disabled="disabled"
+						>
+							<slot>
+								<!-- 拖拽方式 -->
+								<div v-if="drag" class="cl-upload__demo is-dragger">
+									<el-icon :size="46">
+										<upload-filled />
+									</el-icon>
+									<div>
+										{{
+											t('点击上传或将文件拖动到此处，文件大小限制{n}M', {
+												n: limitSize
+											})
+										}}
+									</div>
+								</div>
+
+								<!-- 点击方式 -->
+								<div v-else class="cl-upload__demo">
+									<el-icon :size="36">
+										<component :is="icon" v-if="icon" />
+										<picture-filled v-else />
+									</el-icon>
+									<span v-if="text" class="text">{{ text }}</span>
+								</div>
+							</slot>
+						</el-upload>
+					</div>
+				</template>
+
+				<!-- 列表 -->
+				<template #item="{ element: item, index }">
+					<el-upload
+						action=""
+						:accept="accept"
+						:show-file-list="false"
+						:http-request="
+							req => {
+								return httpRequest(req, item);
 							}
 						"
+						:before-upload="
+							file => {
+								onBeforeUpload(file, item);
+							}
+						"
+						:headers="headers"
+						:disabled="disabled"
 					>
-						<el-table-column
-							type="selection"
-							width="60px"
-							align="center"
-							fixed="left"
-						/>
+						<slot name="item" :item="item" :index="index">
+							<div class="cl-upload__item">
+								<upload-item
+									:show-tag="showTag"
+									:item="item"
+									:list="list"
+									:disabled="disabled"
+									:deletable="deletable"
+									@remove="remove(index)"
+								/>
 
-						<el-table-column
-							:label="$t('序号')"
-							type="index"
-							width="80px"
-							align="center"
-							fixed="left"
-							:index="table.onIndex"
-						/>
-
-						<el-table-column
-							v-for="item in table.header"
-							:key="item"
-							:prop="item"
-							:label="item"
-							min-width="160px"
-							align="center"
-						>
-							<template #default="scope">
-								<span v-if="!scope.row._edit">{{ scope.row[item] }}</span>
-
-								<template v-else>
-									<el-input
-										v-model="scope.row[item]"
-										type="textarea"
-										clearable
-										:placeholder="item"
-									/>
-								</template>
-							</template>
-						</el-table-column>
-
-						<el-table-column
-							:label="$t('操作')"
-							width="100px"
-							align="center"
-							fixed="right"
-						>
-							<template #default="scope">
-								<el-button
-									text
-									bg
-									type="danger"
-									@click.stop="table.del(scope.$index)"
+								<!-- 小图模式 -->
+								<el-icon
+									v-if="small"
+									class="cl-upload__item-remove"
+									@click.stop="remove(index)"
 								>
-									{{ $t('删除') }}
-								</el-button>
-							</template>
-						</el-table-column>
-					</el-table>
-				</div>
-
-				<div class="pagination">
-					<el-pagination
-						v-model:current-page="pagination.page"
-						background
-						layout="total, prev, pager, next"
-						:total="upload.list.length"
-						:page-size="pagination.size"
-						@current-change="pagination.onCurrentChange"
-					/>
-				</div>
-			</div>
-		</template>
-	</cl-form>
+									<circle-close-filled />
+								</el-icon>
+							</div>
+						</slot>
+					</el-upload>
+				</template>
+			</vue-draggable>
+		</div>
+	</div>
 </template>
 
 <script lang="ts" setup>
 defineOptions({
-	name: 'cl-import-btn'
+	name: 'cl-upload'
 });
 
-import { useForm } from '@cool-vue/crud';
+import { computed, ref, watch, type PropType, nextTick } from 'vue';
+import { assign, isArray, isEmpty, isNumber } from 'lodash-es';
+import VueDraggable from 'vuedraggable';
 import { ElMessage } from 'element-plus';
-import { reactive, type PropType, computed } from 'vue';
-import * as XLSX from 'xlsx';
-import chardet from 'chardet';
-import { extname } from '/@/cool/utils';
-import { has } from 'lodash-es';
-import { useI18n } from 'vue-i18n';
+import { PictureFilled, UploadFilled, CircleCloseFilled } from '@element-plus/icons-vue';
+import { useForm } from '@cool-vue/crud';
 import { useCool } from '/@/cool';
+import { useBase } from '/$/base';
+import { uuid, isPromise } from '/@/cool/utils';
+import { getUrls, getType } from '../utils';
+import { useUpload } from '../hooks';
+import UploadItem from './upload-item/index.vue';
+import { CrudProps } from '/#/crud';
+import { useI18n } from 'vue-i18n';
 
 const props = defineProps({
-	onConfig: Function,
-	onSubmit: Function,
-	template: {
-		type: String,
-		default: ''
+	...CrudProps,
+	// 绑定值，单选时字符串，多选时字符串数组
+	modelValue: {
+		type: [String, Array],
+		default: () => []
 	},
-	tips: String,
-	limitSize: {
-		type: Number,
-		default: 10
-	},
+	// 上传类型
 	type: {
-		type: String as PropType<
-			'default' | 'success' | 'warning' | 'info' | 'text' | 'primary' | 'danger'
-		>,
-		default: 'success'
+		type: String as PropType<'image' | 'file'>,
+		default: 'image'
 	},
-	icon: String,
+	// 允许上传的文件类型
+	accept: String,
+	// 是否多选
+	multiple: Boolean,
+	// 限制数量
+	limit: Number,
+	// 限制大小
+	limitSize: Number,
+	// 是否自动上传
+	autoUpload: {
+		type: Boolean,
+		default: true
+	},
+	// 元素大小
+	size: [String, Number, Array],
+	// 小图模式
+	small: Boolean,
+	// 显示图标
+	icon: null,
+	// 显示文案
+	text: String,
+	// 显示角标
+	showTag: {
+		type: Boolean,
+		default: true
+	},
+	// 是否显示上传列表
+	showFileList: {
+		type: Boolean,
+		default: true
+	},
+	// 列表是否可拖拽
+	draggable: Boolean,
+	// 是否拖拽到特定区域以进行上传
+	drag: Boolean,
+	// 是否禁用
 	disabled: Boolean,
-	accept: {
-		type: String,
-		default:
-			'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel,text/csv'
-	}
+	// 是否可删除
+	deletable: Boolean,
+	// 自定义样式名
+	customClass: String,
+	// 上传前钩子
+	beforeUpload: Function,
+	// 云端上传路径前缀
+	prefixPath: String
 });
 
-const emit = defineEmits(['change']);
+const emit = defineEmits(['update:modelValue', 'change', 'upload', 'success', 'error', 'progress']);
 
-const Form = useForm();
-const { t } = useI18n();
 const { refs, setRefs } = useCool();
+const { user } = useBase();
+const Form = useForm();
+const { options, toUpload } = useUpload();
+const { t } = useI18n();
 
-// 提示信息
-const tips = computed(() => {
-	return props.tips || t('请按照模版填写信息');
+// 元素尺寸
+const size = computed(() => {
+	const d = props.size || options.size;
+	return (isArray(d) ? d : [d, d]).map((e: string | number) => (isNumber(e) ? e + 'px' : e));
 });
 
-// 上传信息
-const upload = reactive({
-	filename: '',
-	file: null as File | null,
-	list: [] as any[]
+// 是否禁用
+const disabled = computed(() => {
+	return props.isDisabled || props.disabled;
 });
 
-// 分页信息
-const pagination = reactive({
-	size: 20,
-	page: 1,
-	onCurrentChange(page: number) {
-		pagination.page = page;
-	}
-});
+// 最大上传数量
+const limit = props.limit || options.limit.upload;
 
-// 数据表格
-const table = reactive({
-	// 表头
-	header: [] as string[],
+// 图片大小限制
+const limitSize = props.limitSize || options.limit.size;
 
-	// 选中列表
-	selection: [] as any[],
+// 文案
+const text = computed(() => {
+	if (props.text !== undefined) {
+		return props.text;
+	} else {
+		switch (props.type) {
+			case 'file':
+				return t('选择文件');
 
-	// 删除行
-	del(index?: number) {
-		if (index !== undefined) {
-			upload.list.splice(index, 1);
-		} else {
-			upload.list = upload.list.filter(a => {
-				return !table.selection.includes(a._index);
-			});
+			case 'image':
+				return t('选择图片');
+
+			default:
+				return '';
 		}
-	},
-
-	// 序号
-	onIndex(index: number) {
-		return index + 1 + (pagination.page - 1) * pagination.size;
-	},
-
-	// 选中
-	onSelectionChange(arr: any[]) {
-		table.selection = arr.map(e => e._index);
 	}
 });
 
-// 数据列表
-const list = computed(() => {
-	return upload.list.filter((_, i) => {
-		return (
-			i >= (pagination.page - 1) * pagination.size && i < pagination.page * pagination.size
-		);
-	});
+// 请求头
+const headers = computed(() => {
+	return {
+		Authorization: user.token
+	};
 });
+
+// 列表
+const list = ref<Upload.Item[]>([]);
+
+// 显示上传列表
+const showList = computed(() => {
+	if (props.type == 'file') {
+		return props.showFileList ? !isEmpty(list.value) : false;
+	} else {
+		return true;
+	}
+});
+
+// 文件格式
+const accept = computed(() => {
+	return props.accept || (props.type == 'file' ? '' : 'image/*');
+});
+
+// 能否添加
+const isAdd = computed(() => {
+	const len = list.value.length;
+
+	if (props.multiple && !disabled.value) {
+		return limit - len > 0;
+	}
+
+	return len == 0;
+});
+
+// 上传前
+async function onBeforeUpload(file: any, item?: Upload.Item) {
+	function next() {
+		const d = {
+			uid: file.uid,
+			size: file.size,
+			name: file.name,
+			type: getType(file.name),
+			progress: props.autoUpload ? 0 : 100, // 非自动上传时默认100%
+			url: '',
+			preload: '',
+			error: ''
+		};
+
+		// 图片预览地址
+		if (d.type == 'image') {
+			if (file instanceof File) {
+				d.preload = window.webkitURL.createObjectURL(file);
+			}
+		}
+
+		// 上传事件
+		emit('upload', d, file);
+
+		// 赋值
+		if (item) {
+			assign(item, d);
+		} else {
+			if (props.multiple) {
+				if (!isAdd.value) {
+					ElMessage.warning(t('最多只能上传{n}个文件', { n: limit }));
+					return false;
+				} else {
+					list.value.push(d);
+				}
+			} else {
+				list.value = [d];
+			}
+		}
+
+		return true;
+	}
+
+	// 文件大小限制
+	if (file.size / 1024 / 1024 >= limitSize) {
+		ElMessage.error(t('上传文件大小不能超过 {n}MB!', { n: limitSize }));
+		return false;
+	}
+
+	// 自定义上传事件
+	if (props.beforeUpload) {
+		let r = props.beforeUpload(file, item, { next });
+
+		if (isPromise(r)) {
+			r.then(next).catch(() => null);
+		} else {
+			if (r) {
+				r = next();
+			}
+		}
+
+		return r;
+	} else {
+		return next();
+	}
+}
+
+// 移除
+function remove(index: number) {
+	list.value.splice(index, 1);
+	update();
+}
 
 // 清空
 function clear() {
-	upload.filename = '';
-	upload.file = null;
-	upload.list = [];
-	table.header = [];
-	table.selection = [];
-	refs.upload?.clear();
+	list.value = [];
 }
 
-// 打开
-function open() {
+// 文件上传请求
+async function httpRequest(req: any, item?: Upload.Item) {
+	if (!item) {
+		item = list.value.find(e => e.uid == req.file.uid);
+	}
+
+	if (!item) {
+		return false;
+	}
+
+	// 上传请求
+	toUpload(req.file, {
+		prefixPath: props.prefixPath,
+		onProgress(progress) {
+			item!.progress = progress;
+			emit('progress', item);
+		}
+	})
+		.then(res => {
+			assign(item!, res);
+			emit('success', item);
+			update();
+		})
+		.catch(err => {
+			item!.error = err.message;
+			emit('error', item);
+		});
+}
+
+// 检测是否还有未上传的文件
+function check() {
+	return list.value.find(e => !e.url);
+}
+
+// 更新
+function update() {
+	if (!check()) {
+		const urls = getUrls(list.value);
+
+		const val = props.multiple ? getUrls(list.value) : urls[0] || '';
+
+		// 更新绑定值
+		emit('update:modelValue', val);
+		emit('change', val);
+
+		nextTick(() => {
+			if (props.prop) {
+				Form.value?.validateField(props.prop);
+			}
+
+			// 清空
+			refs.upload?.clearFiles();
+		});
+	}
+}
+
+// 手动上传
+function upload(file: File) {
 	clear();
 
-	Form.value?.open({
-		title: t('导入'),
-		width: computed(() => (upload.filename ? '80%' : '800px')),
-		dialog: {
-			'close-on-press-escape': false
-		},
-		items: [
-			...(props.onConfig ? props.onConfig(Form) : []),
-			{
-				prop: 'file',
-				component: {
-					name: 'slot-upload'
-				},
-				hidden() {
-					return upload.filename;
-				}
-			},
-			{
-				component: {
-					name: 'slot-list'
-				}
-			}
-		],
-		op: {
-			saveButtonText: t('提交')
-		},
-		on: {
-			submit(_, { done, close }) {
-				if (!upload.filename) {
-					done();
-					return ElMessage.error(t('请选择文件'));
-				}
+	refs.upload?.clearFiles();
 
-				if (props.onSubmit) {
-					props.onSubmit(
-						{
-							...upload,
-							..._
-						},
-						{ done, close }
-					);
-				} else {
-					ElMessage.error(t('[cl-import-btn] onSubmit is required'));
-					done();
-				}
-			}
-		}
+	nextTick(() => {
+		refs.upload?.handleStart(file);
+		refs.upload?.submit();
 	});
 }
 
-// 上传
-function onUpload(raw: File, _: any, { next }: any) {
-	const reader = new FileReader();
-	const ext = extname(raw.name);
-
-	reader.onload = (event: any) => {
-		try {
-			let data = '';
-
-			if (ext == 'csv') {
-				const detected: any = chardet.detect(new Uint8Array(event.target.result));
-				const decoder = new TextDecoder(detected);
-				data = decoder.decode(event.target.result);
-			} else {
-				data = event.target.result;
-			}
-
-			const workbook = XLSX.read(data, { type: 'binary', raw: ext == 'csv' });
-
-			let json: any[] = [];
-			for (const sheet in workbook.Sheets) {
-				if (has(workbook.Sheets, sheet)) {
-					json = json.concat(
-						XLSX.utils.sheet_to_json(workbook.Sheets[sheet], {
-							raw: false,
-							dateNF: 'yyyy-mm-dd',
-							defval: ''
-						})
-					);
-				}
-			}
-
-			upload.list = json.map((e, i) => {
-				return {
-					...e,
-					_index: i
-				};
-			});
-			upload.filename = raw.name;
-			upload.file = raw;
-
-			const sheet = workbook.Sheets[Object.keys(workbook.Sheets)[0]];
-
-			for (const i in sheet) {
-				if (i[0] === '!') continue;
-
-				const row = i.match(/[0-9]+/)?.[0];
-
-				if (row == '1') {
-					table.header.push(sheet[i].v);
-				}
-			}
-
-			emit('change', json);
-		} catch (err) {
-			ElMessage.error(t('文件异常，请检查内容是否正确'));
-			clear();
+// 监听绑定值
+watch(
+	() => props.modelValue,
+	(val: any[] | string) => {
+		if (check()) {
+			return false;
 		}
-	};
 
-	if (ext == 'csv') {
-		reader.readAsArrayBuffer(raw);
-	} else {
-		reader.readAsBinaryString(raw);
+		const urls = (isArray(val) ? val : [val]).filter(Boolean);
+
+		list.value = urls
+			.map((url, index) => {
+				const old = list.value[index] || {};
+
+				return assign(
+					{
+						progress: 100,
+						uid: uuid()
+					},
+					old,
+					{
+						type: getType(url),
+						url,
+						preload: old.url == url ? old.preload : url // 防止重复预览
+					}
+				);
+			})
+			.filter((_, i) => {
+				return props.multiple ? true : i == 0;
+			});
+	},
+	{
+		immediate: true
 	}
+);
 
-	next();
-
-	return false;
-}
-
-// 下载模版
-function download() {
-	const link = document.createElement('a');
-	link.setAttribute('href', props.template);
-	link.setAttribute('download', '');
-	link.click();
-}
-
+// 导出
 defineExpose({
-	open,
+	isAdd,
+	list,
+	check,
 	clear,
-	Form
+	remove,
+	upload
 });
 </script>
 
 <style lang="scss" scoped>
-.upload {
-	display: flex;
-	flex-direction: column;
+.cl-upload {
+	line-height: normal;
 
-	.inner {
+	.Ghost {
+		.cl-upload__item {
+			border: 1px dashed var(--el-color-primary) !important;
+		}
+	}
+
+	&__file {
 		width: 100%;
 
-		:deep(.cl-upload) {
-			.cl-upload__footer,
-			.cl-upload__list,
-			.el-upload,
-			.is-drag {
-				width: 100% !important;
+		&-btn {
+			width: fit-content;
+		}
+	}
+
+	&__list {
+		display: flex;
+		flex-wrap: wrap;
+	}
+
+	&__item,
+	&__demo {
+		display: flex;
+		flex-direction: column;
+		align-items: center;
+		justify-content: center;
+		height: v-bind('size[0]');
+		width: v-bind('size[1]');
+		background-color: var(--el-fill-color-light);
+		color: var(--el-text-color-regular);
+		border-radius: 8px;
+		cursor: pointer;
+		box-sizing: border-box;
+		position: relative;
+		user-select: none;
+	}
+
+	&__demo {
+		font-size: 13px;
+
+		.el-icon {
+			font-size: 46px;
+		}
+
+		.text {
+			margin-top: 5px;
+		}
+
+		&.is-dragger {
+			padding: 20px;
+		}
+	}
+
+	&__file-btn {
+		& + .cl-upload__list {
+			margin-top: 10px;
+		}
+	}
+
+	:deep(.el-upload) {
+		display: block;
+
+		.el-upload-dragger {
+			padding: 0;
+			border: 0;
+			background-color: transparent !important;
+			position: relative;
+
+			&.is-dragover {
+				&::after {
+					display: block;
+					content: '';
+					position: absolute;
+					left: 0;
+					top: 0;
+					height: 100%;
+					width: 100%;
+					pointer-events: none;
+					border-radius: 8px;
+					box-sizing: border-box;
+					border: 1px dashed var(--el-color-primary);
+				}
 			}
 		}
 	}
-}
 
-.tips {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	margin-bottom: 20px;
+	&.is-disabled {
+		.cl-upload__demo {
+			color: var(--el-text-color-placeholder);
+		}
 
-	& > span {
-		color: var(--el-color-warning);
-	}
-}
-
-.data-table {
-	.head {
-		margin-bottom: 10px;
+		:deep(.cl-upload__item) {
+			cursor: not-allowed;
+			background-color: var(--el-disabled-bg-color);
+		}
 	}
 
-	.pagination {
-		display: flex;
-		justify-content: flex-end;
-		margin-top: 10px;
+	&.is-multiple {
+		.cl-upload__list {
+			margin-bottom: -5px;
+		}
+
+		.cl-upload__item {
+			margin: 0 5px 5px 0;
+		}
+
+		.cl-upload__footer {
+			margin-bottom: 5px;
+		}
+	}
+
+	&.is-small {
+		.cl-upload__demo {
+			.el-icon {
+				font-size: 20px !important;
+			}
+
+			.text {
+				display: none;
+			}
+		}
+
+		.cl-upload__item-remove {
+			position: absolute;
+			right: 0px;
+			top: 0px;
+			color: var(--el-color-danger);
+			background-color: #fff;
+			border-radius: 100%;
+		}
+
+		:deep(.cl-upload-item) {
+			.cl-upload-item__progress-bar,
+			.cl-upload-item__actions,
+			.cl-upload-item__tag {
+				display: none;
+			}
+
+			.cl-upload-item__progress-value {
+				font-size: 12px;
+			}
+		}
+	}
+
+	&:not(.is-disabled) {
+		.cl-upload__demo {
+			&:hover {
+				color: var(--el-color-primary);
+			}
+		}
 	}
 }
 </style>
