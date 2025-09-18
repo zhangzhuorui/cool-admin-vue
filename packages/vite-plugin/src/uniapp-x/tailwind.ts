@@ -287,28 +287,31 @@ function transformPlugin(): Plugin {
 						_node = _node.replace("/>", "</input>");
 					}
 
-					// 为 text 节点添加暗黑模式文本颜色
-					if (!_node.includes(darkTextClass) && _node.startsWith("<text")) {
-						let classIndex = _node.indexOf("class=");
+					// uniappx 插件模式
+					if (!config.uniapp.isPlugin) {
+						// 为 text 节点添加暗黑模式文本颜色
+						if (!_node.includes(darkTextClass) && _node.startsWith("<text")) {
+							let classIndex = _node.indexOf("class=");
 
-						// 处理动态 class
-						if (classIndex >= 0) {
-							if (_node[classIndex - 1] == ":") {
-								classIndex = _node.lastIndexOf("class=");
+							// 处理动态 class
+							if (classIndex >= 0) {
+								if (_node[classIndex - 1] == ":") {
+									classIndex = _node.lastIndexOf("class=");
+								}
 							}
-						}
 
-						// 添加暗黑模式类名
-						if (classIndex >= 0) {
-							_node =
-								_node.substring(0, classIndex + 7) +
-								`${darkTextClass} ` +
-								_node.substring(classIndex + 7, _node.length);
-						} else {
-							_node =
-								_node.substring(0, 5) +
-								` class="${darkTextClass}" ` +
-								_node.substring(5, _node.length);
+							// 添加暗黑模式类名
+							if (classIndex >= 0) {
+								_node =
+									_node.substring(0, classIndex + 7) +
+									`${darkTextClass} ` +
+									_node.substring(classIndex + 7, _node.length);
+							} else {
+								_node =
+									_node.substring(0, 5) +
+									` class="${darkTextClass}" ` +
+									_node.substring(5, _node.length);
+							}
 						}
 					}
 
@@ -333,9 +336,14 @@ function transformPlugin(): Plugin {
 					}
 
 					// 获取暗黑模式类名
-					const darkClassNames = classNames.filter((name) =>
+					let darkClassNames = classNames.filter((name) =>
 						name.startsWith("dark-colon-"),
 					);
+
+					// 插件模式，不支持 dark:
+					if (config.uniapp.isPlugin) {
+						darkClassNames = [];
+					}
 
 					// 生成暗黑模式类名的动态绑定
 					const darkClassContent = darkClassNames
@@ -388,10 +396,12 @@ function transformPlugin(): Plugin {
 							modifiedCode += '<script lang="ts" setup></script>';
 						}
 
-						modifiedCode = addScriptContent(
-							modifiedCode,
-							"\nimport { isDark as __isDark } from '@/cool';",
-						);
+						if (!config.uniapp.isPlugin) {
+							modifiedCode = addScriptContent(
+								modifiedCode,
+								"\nimport { isDark as __isDark } from '@/cool';",
+							);
+						}
 					}
 
 					// 清理空的类名绑定

@@ -60,6 +60,11 @@ export function cool(options: Config.Options) {
 		config.eps.enable = false;
 	}
 
+	// uniapp
+	if (options.uniapp) {
+		assign(config.uniapp, options.uniapp);
+	}
+
 	// tailwind
 	if (options.tailwind) {
 		assign(config.tailwind, options.tailwind);

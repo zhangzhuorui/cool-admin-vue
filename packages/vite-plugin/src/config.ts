@@ -53,5 +53,8 @@ export const config = {
 		rpxRatio: 2,
 		darkTextClass: "dark:text-surface-50",
 	},
+	uniapp: {
+		isPlugin: false,
+	},
 	clean: false,
 };

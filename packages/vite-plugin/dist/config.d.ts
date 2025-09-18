@@ -31,5 +31,8 @@ export declare const config: {
         rpxRatio: number;
         darkTextClass: string;
     };
+    uniapp: {
+        isPlugin: boolean;
+    };
     clean: boolean;
 };

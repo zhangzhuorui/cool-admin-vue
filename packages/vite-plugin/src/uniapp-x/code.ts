@@ -100,18 +100,21 @@ export function codePlugin(): Plugin[] {
 				if (id.includes("/cool/ctx/index.ts")) {
 					const ctx = await createCtx();
 
-					// 版本
-					const version = getVersion();
-
 					// 主题配置
 					const theme = readFile(rootDir("theme.json"), true);
 
 					// 主题配置
-					ctx["theme"] = theme;
+					ctx["theme"] = theme || {};
 
-					if (compareVersion(version, "8.0.2") >= 0) {
-						// 颜色值
-						ctx["color"] = getTailwindColor();
+					// 颜色值
+					ctx["color"] = getTailwindColor();
+
+					if (!ctx.subPackages) {
+						ctx.subPackages = [];
+					}
+
+					if (!ctx.tabBar) {
+						ctx.tabBar = {};
 					}
 
 					// 安全字符映射
@@ -120,9 +123,19 @@ export function codePlugin(): Plugin[] {
 						ctx["SAFE_CHAR_MAP_LOCALE"].push([i, SAFE_CHAR_MAP_LOCALE[i]]);
 					}
 
+					let ctxCode = JSON.stringify(ctx, null, 4);
+
+					ctxCode = ctxCode.replace(`"tabBar": {}`, `"tabBar": {} as TabBar`);
+					ctxCode = ctxCode.replace(
+						`"subPackages": []`,
+						`"subPackages": [] as SubPackage[]`,
+					);
+
+					code = code.replace("const ctx = {}", `const ctx = ${ctxCode}`);
+
 					code = code.replace(
-						"const ctx = {}",
-						`const ctx = ${JSON.stringify(ctx, null, 4)}`,
+						"const ctx = parse<Ctx>({})!",
+						`const ctx = parse<Ctx>(${ctxCode})!`,
 					);
 				}
 

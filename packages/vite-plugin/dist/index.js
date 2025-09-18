@@ -56,6 +56,9 @@
             rpxRatio: 2,
             darkTextClass: "dark:text-surface-50",
         },
+        uniapp: {
+            isPlugin: false,
+        },
         clean: false,
     };
 
@@ -194,26 +197,6 @@
     }
     function error(message) {
         console.log("\x1B[31m%s\x1B[0m", message);
-    }
-    /**
-     * 比较两个版本号
-     * @param version1 版本号1 (如: "1.2.3")
-     * @param version2 版本号2 (如: "1.2.4")
-     * @returns 1: version1 > version2, 0: 相等, -1: version1 < version2
-     */
-    function compareVersion(version1, version2) {
-        const v1Parts = version1.split(".").map(Number);
-        const v2Parts = version2.split(".").map(Number);
-        const maxLength = Math.max(v1Parts.length, v2Parts.length);
-        for (let i = 0; i < maxLength; i++) {
-            const v1Part = v1Parts[i] || 0;
-            const v2Part = v2Parts[i] || 0;
-            if (v1Part > v2Part)
-                return 1;
-            if (v1Part < v2Part)
-                return -1;
-        }
-        return 0;
     }
 
     /**
@@ -2169,27 +2152,30 @@ if (typeof window !== 'undefined') {
                         if (_node.startsWith("<input")) {
                             _node = _node.replace("/>", "</input>");
                         }
-                        // 为 text 节点添加暗黑模式文本颜色
-                        if (!_node.includes(darkTextClass) && _node.startsWith("<text")) {
-                            let classIndex = _node.indexOf("class=");
-                            // 处理动态 class
-                            if (classIndex >= 0) {
-                                if (_node[classIndex - 1] == ":") {
-                                    classIndex = _node.lastIndexOf("class=");
+                        // uniappx 插件模式
+                        if (!config.uniapp.isPlugin) {
+                            // 为 text 节点添加暗黑模式文本颜色
+                            if (!_node.includes(darkTextClass) && _node.startsWith("<text")) {
+                                let classIndex = _node.indexOf("class=");
+                                // 处理动态 class
+                                if (classIndex >= 0) {
+                                    if (_node[classIndex - 1] == ":") {
+                                        classIndex = _node.lastIndexOf("class=");
+                                    }
                                 }
-                            }
-                            // 添加暗黑模式类名
-                            if (classIndex >= 0) {
-                                _node =
-                                    _node.substring(0, classIndex + 7) +
-                                        `${darkTextClass} ` +
-                                        _node.substring(classIndex + 7, _node.length);
-                            }
-                            else {
-                                _node =
-                                    _node.substring(0, 5) +
-                                        ` class="${darkTextClass}" ` +
-                                        _node.substring(5, _node.length);
+                                // 添加暗黑模式类名
+                                if (classIndex >= 0) {
+                                    _node =
+                                        _node.substring(0, classIndex + 7) +
+                                            `${darkTextClass} ` +
+                                            _node.substring(classIndex + 7, _node.length);
+                                }
+                                else {
+                                    _node =
+                                        _node.substring(0, 5) +
+                                            ` class="${darkTextClass}" ` +
+                                            _node.substring(5, _node.length);
+                                }
                             }
                         }
                         // 获取所有类名
@@ -2209,7 +2195,11 @@ if (typeof window !== 'undefined') {
                             _node = _node.slice(0, -1) + ` :class="{}"` + ">";
                         }
                         // 获取暗黑模式类名
-                        const darkClassNames = classNames.filter((name) => name.startsWith("dark-colon-"));
+                        let darkClassNames = classNames.filter((name) => name.startsWith("dark-colon-"));
+                        // 插件模式，不支持 dark:
+                        if (config.uniapp.isPlugin) {
+                            darkClassNames = [];
+                        }
                         // 生成暗黑模式类名的动态绑定
                         const darkClassContent = darkClassNames
                             .map((name) => {
@@ -2245,7 +2235,9 @@ if (typeof window !== 'undefined') {
                             if (!modifiedCode.includes("<script")) {
                                 modifiedCode += '<script lang="ts" setup></script>';
                             }
-                            modifiedCode = addScriptContent(modifiedCode, "\nimport { isDark as __isDark } from '@/cool';");
+                            if (!config.uniapp.isPlugin) {
+                                modifiedCode = addScriptContent(modifiedCode, "\nimport { isDark as __isDark } from '@/cool';");
+                            }
                         }
                         // 清理空的类名绑定
                         modifiedCode = modifiedCode
@@ -2331,11 +2323,6 @@ if (typeof window !== 'undefined') {
             return null;
         }
     }
-    // 获取版本号
-    function getVersion() {
-        const pkg = readFile(rootDir("package.json"), true);
-        return pkg?.version || "0.0.0";
-    }
     function codePlugin() {
         return [
             {
@@ -2344,22 +2331,28 @@ if (typeof window !== 'undefined') {
                 async transform(code, id) {
                     if (id.includes("/cool/ctx/index.ts")) {
                         const ctx = await createCtx();
-                        // 版本
-                        const version = getVersion();
                         // 主题配置
                         const theme = readFile(rootDir("theme.json"), true);
                         // 主题配置
-                        ctx["theme"] = theme;
-                        if (compareVersion(version, "8.0.2") >= 0) {
-                            // 颜色值
-                            ctx["color"] = getTailwindColor();
+                        ctx["theme"] = theme || {};
+                        // 颜色值
+                        ctx["color"] = getTailwindColor();
+                        if (!ctx.subPackages) {
+                            ctx.subPackages = [];
+                        }
+                        if (!ctx.tabBar) {
+                            ctx.tabBar = {};
                         }
                         // 安全字符映射
                         ctx["SAFE_CHAR_MAP_LOCALE"] = [];
                         for (const i in SAFE_CHAR_MAP_LOCALE) {
                             ctx["SAFE_CHAR_MAP_LOCALE"].push([i, SAFE_CHAR_MAP_LOCALE[i]]);
                         }
-                        code = code.replace("const ctx = {}", `const ctx = ${JSON.stringify(ctx, null, 4)}`);
+                        let ctxCode = JSON.stringify(ctx, null, 4);
+                        ctxCode = ctxCode.replace(`"tabBar": {}`, `"tabBar": {} as TabBar`);
+                        ctxCode = ctxCode.replace(`"subPackages": []`, `"subPackages": [] as SubPackage[]`);
+                        code = code.replace("const ctx = {}", `const ctx = ${ctxCode}`);
+                        code = code.replace("const ctx = parse<Ctx>({})!", `const ctx = parse<Ctx>(${ctxCode})!`);
                     }
                     // if (id.includes("/cool/service/index.ts")) {
                     // 	const eps = await createEps();
@@ -2472,6 +2465,10 @@ if (typeof window !== 'undefined') {
         // 如果类型为 uniapp-x，则关闭 eps
         if (config.type == "uniapp-x") {
             config.eps.enable = false;
+        }
+        // uniapp
+        if (options.uniapp) {
+            lodash.assign(config.uniapp, options.uniapp);
         }
         // tailwind
         if (options.tailwind) {
