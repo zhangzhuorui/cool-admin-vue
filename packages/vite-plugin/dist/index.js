@@ -2148,10 +2148,6 @@ if (typeof window !== 'undefined') {
                             return;
                         }
                         let _node = node;
-                        // 兼容 <input /> 标签
-                        if (_node.startsWith("<input")) {
-                            _node = _node.replace("/>", "</input>");
-                        }
                         // uniappx 插件模式
                         if (!config.uniapp.isPlugin) {
                             // 为 text 节点添加暗黑模式文本颜色
@@ -2192,7 +2188,10 @@ if (typeof window !== 'undefined') {
                         const hasDynamicClass = _node.includes(":class=");
                         // 如果没有动态类名,添加空的动态类名绑定
                         if (!hasDynamicClass) {
-                            _node = _node.slice(0, -1) + ` :class="{}"` + ">";
+                            // 优化写法，避免重复字符串拼接
+                            const insertIndex = _node.length - (_node.endsWith("/>") ? 2 : 1);
+                            _node =
+                                _node.slice(0, insertIndex) + ` :class="{}"` + _node.slice(insertIndex);
                         }
                         // 获取暗黑模式类名
                         let darkClassNames = classNames.filter((name) => name.startsWith("dark-colon-"));
