@@ -29,6 +29,13 @@ export async function createCtx() {
 		ctx.pages = ctx.pages?.filter((e) => !e.isTemp);
 		ctx.subPackages = ctx.subPackages?.filter((e) => !e.isTemp);
 
+		// 删除不需要的数据
+		for (const i in ctx) {
+			if (!["pages", "subPackages", "tabBar", "globalStyle", "uniIdRouter"].includes(i)) {
+				delete ctx[i];
+			}
+		}
+
 		// 加载 uni_modules 配置文件
 		const files = await glob(rootDir("uni_modules") + "/**/pages_init.json", {
 			stat: true,
