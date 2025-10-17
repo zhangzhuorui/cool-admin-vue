@@ -1,19 +1,6 @@
 import { firstUpperCase } from "../utils";
 
 /**
- * 解析结果的接口定义
- * @interface ParseResult
- */
-interface ParseResult {
-	/** 解析出的键名 */
-	key: string;
-	/** 解析出的内容 */
-	content: string;
-	/** 层级 */
-	level: number;
-}
-
-/**
  * 将模板字符串扁平化处理，转换为 Service 类型定义
  * @param template - 包含 Service 类型定义的模板字符串
  * @returns 处理后的 Service 类型定义字符串

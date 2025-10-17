@@ -98,10 +98,14 @@ function postcssPlugin(): Plugin {
 										// 处理选择器规则
 										Rule(rule: any) {
 											if (
-												rule.selector.includes("uni-") ||
-												[".button-hover"].some((e) =>
-													rule.selector.includes(e),
-												)
+												[
+													".button-hover",
+													":deep(",
+													"&::",
+													":is(",
+													"uni-",
+													".uni-",
+												].some((e) => rule.selector.includes(e))
 											) {
 												return;
 											}

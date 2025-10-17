@@ -1,9 +1,7 @@
 import type { Plugin } from "vite";
 import { SAFE_CHAR_MAP_LOCALE } from "./config";
 import { createCtx } from "../ctx";
-import { compareVersion, readFile, rootDir } from "../utils";
-import { createEps } from "../eps";
-import { uniq } from "lodash";
+import { readFile, rootDir } from "../utils";
 
 // 获取 tailwind.config.ts 中的颜色
 function getTailwindColor() {

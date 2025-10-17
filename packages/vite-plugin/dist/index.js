@@ -2012,8 +2012,14 @@ if (typeof window !== 'undefined') {
                                         return {
                                             // 处理选择器规则
                                             Rule(rule) {
-                                                if (rule.selector.includes("uni-") ||
-                                                    [".button-hover"].some((e) => rule.selector.includes(e))) {
+                                                if ([
+                                                    ".button-hover",
+                                                    ":deep(",
+                                                    "&::",
+                                                    ":is(",
+                                                    "uni-",
+                                                    ".uni-",
+                                                ].some((e) => rule.selector.includes(e))) {
                                                     return;
                                                 }
                                                 // 转换选择器为安全的类名格式
