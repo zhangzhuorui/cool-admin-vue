@@ -2016,7 +2016,6 @@ if (typeof window !== 'undefined') {
                                                     ".button-hover",
                                                     ":deep(",
                                                     "&::",
-                                                    ":is(",
                                                     "uni-",
                                                     ".uni-",
                                                 ].some((e) => rule.selector.includes(e))) {
