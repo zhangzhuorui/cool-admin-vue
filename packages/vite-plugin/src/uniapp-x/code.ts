@@ -115,6 +115,10 @@ export function codePlugin(): Plugin[] {
 						ctx.tabBar = {};
 					}
 
+					if (!ctx.uniIdRouter) {
+						ctx.uniIdRouter = {};
+					}
+
 					// 安全字符映射
 					ctx["SAFE_CHAR_MAP_LOCALE"] = [];
 					for (const i in SAFE_CHAR_MAP_LOCALE) {

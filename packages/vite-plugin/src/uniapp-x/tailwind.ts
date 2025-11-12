@@ -272,6 +272,11 @@ function transformPlugin(): Plugin {
 
 			// 判断是否为 uvue 文件
 			if (id.endsWith(".uvue") || id.includes(".uvue?type=page")) {
+				// 避免影响到其他模块/插件
+				if (id.includes("uni_modules/") && !id.includes("uni_modules/cool-")) {
+					return null;
+				}
+
 				let modifiedCode = code;
 
 				// 获取所有节点
