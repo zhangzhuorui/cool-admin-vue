@@ -60,6 +60,7 @@
             isPlugin: false,
         },
         clean: false,
+        utsPlatform: "web",
     };
 
     // 根目录
@@ -1942,6 +1943,9 @@ if (typeof window !== 'undefined') {
      * 转换类名中的特殊字符为安全字符
      */
     function toSafeClass(className) {
+        if (config.utsPlatform == "web") {
+            return className;
+        }
         if (className.includes(":host")) {
             return className;
         }
@@ -2022,7 +2026,7 @@ if (typeof window !== 'undefined') {
                                                     return;
                                                 }
                                                 // 转换选择器为安全的类名格式
-                                                rule.selector = toSafeClass(rule.selector.replace(/\\/g, ""));
+                                                rule.selector = toSafeClass(rule.selector);
                                             },
                                             // 处理声明规则
                                             Declaration(decl) {
@@ -2209,7 +2213,7 @@ if (typeof window !== 'undefined') {
                                 _node.slice(0, insertIndex) + ` :class="{}"` + _node.slice(insertIndex);
                         }
                         // 获取暗黑模式类名
-                        let darkClassNames = classNames.filter((name) => name.startsWith("dark-colon-"));
+                        let darkClassNames = classNames.filter((name) => name.startsWith("dark-colon-") || name.startsWith("dark:"));
                         // 插件模式，不支持 dark:
                         if (config.uniapp.isPlugin) {
                             darkClassNames = [];
@@ -2448,6 +2452,8 @@ if (typeof window !== 'undefined') {
         // 请求地址
         config.reqUrl = getProxyTarget(options.proxy);
         if (config.type == "uniapp-x") {
+            // 编译平台
+            config.utsPlatform = process.env.UNI_UTS_PLATFORM ?? "web";
             // 是否纯净版
             config.clean = options.clean ?? true;
             if (config.clean) {

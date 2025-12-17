@@ -35,4 +35,5 @@ export declare const config: {
         isPlugin: boolean;
     };
     clean: boolean;
+    utsPlatform: string;
 };

@@ -15,6 +15,9 @@ export function cool(options: Config.Options) {
 	config.reqUrl = getProxyTarget(options.proxy);
 
 	if (config.type == "uniapp-x") {
+		// 编译平台
+		config.utsPlatform = process.env.UNI_UTS_PLATFORM ?? "web";
+
 		// 是否纯净版
 		config.clean = options.clean ?? true;
 

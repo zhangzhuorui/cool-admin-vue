@@ -57,4 +57,5 @@ export const config = {
 		isPlugin: false,
 	},
 	clean: false,
+	utsPlatform: "web",
 };

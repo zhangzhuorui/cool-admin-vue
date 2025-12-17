@@ -15,6 +15,10 @@ import {
  * 转换类名中的特殊字符为安全字符
  */
 export function toSafeClass(className: string): string {
+	if (config.utsPlatform == "web") {
+		return className;
+	}
+
 	if (className.includes(":host")) {
 		return className;
 	}
@@ -110,9 +114,7 @@ function postcssPlugin(): Plugin {
 											}
 
 											// 转换选择器为安全的类名格式
-											rule.selector = toSafeClass(
-												rule.selector.replace(/\\/g, ""),
-											);
+											rule.selector = toSafeClass(rule.selector);
 										},
 
 										// 处理声明规则
@@ -343,8 +345,8 @@ function transformPlugin(): Plugin {
 					}
 
 					// 获取暗黑模式类名
-					let darkClassNames = classNames.filter((name) =>
-						name.startsWith("dark-colon-"),
+					let darkClassNames = classNames.filter(
+						(name) => name.startsWith("dark-colon-") || name.startsWith("dark:"),
 					);
 
 					// 插件模式，不支持 dark:
