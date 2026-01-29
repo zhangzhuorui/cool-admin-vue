@@ -1,51 +1,59 @@
 name: Vue Frontend CI/CD
 
 on:
-  push:
-    branches: [ main ]
+    push:
+        branches: [main]
 
 env:
-  AWS_REGION: us-east-2
-  ECR_REPOSITORY: cool-admin-vue
-  CODEDEPLOY_APP: CoolAdminVue
-  CODEDEPLOY_GROUP: Vue-Group
+    AWS_REGION: us-east-2
+    ECR_REPOSITORY: cool-admin-vue
+    CODEDEPLOY_APP: CoolAdminVue
+    CODEDEPLOY_GROUP: Vue-Group
 
 jobs:
-  build-and-deploy:
-    runs-on: self-hosted
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+    build-and-deploy:
+        runs-on: self-hosted
+        steps:
+            - name: Checkout Code
+              uses: actions/checkout@v4
 
-      # 1. 编译前端项目 (生成 dist 目录)
-      - name: Install and Build
-        run: |
-          npm install
-          npm run build
+            # 1. 编译前端项目 (pnpm 版)
+            - name: Install and Build
+              run: |
+                  # 如果 Runner EC2 没装 pnpm，先装一下
+                  if ! command -v pnpm &> /dev/null; then
+                    sudo npm install -g pnpm
+                  fi
 
-      # 2. 登录 AWS ECR
-      - name: Login to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
+                  # 设置内存限制
+                  export NODE_OPTIONS="--max-old-space-size=768"
 
-      # 3. 构建并推送 Docker 镜像
-      - name: Build, Tag, and Push Image
-        id: build-image
-        env:
-          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
-        run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-          echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+                  pnpm install
+                  pnpm run build
 
-      # 4. 触发 CodeDeploy
-      - name: Trigger CodeDeploy
-        run: |
-          aws deploy create-deployment \
-            --application-name ${{ env.CODEDEPLOY_APP }} \
-            --deployment-group-name ${{ env.CODEDEPLOY_GROUP }} \
-            --github-location repository=${{ github.repository }},commitId=${{ github.sha }} \
-            --description "IMAGE_TAG=${{ steps.build-image.outputs.image_tag }}"
+            # 2. 登录 AWS ECR
+            - name: Login to Amazon ECR
+              id: login-ecr
+              uses: aws-actions/amazon-ecr-login@v2
+
+            # 3. 构建并推送 Docker 镜像
+            - name: Build, Tag, and Push Image
+              id: build-image
+              env:
+                  ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+                  IMAGE_TAG: ${{ github.sha }}
+              run: |
+                  docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+                  docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
+                  docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+                  docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+                  echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+
+            # 4. 触发 CodeDeploy
+            - name: Trigger CodeDeploy
+              run: |
+                  aws deploy create-deployment \
+                    --application-name ${{ env.CODEDEPLOY_APP }} \
+                    --deployment-group-name ${{ env.CODEDEPLOY_GROUP }} \
+                    --github-location repository=${{ github.repository }},commitId=${{ github.sha }} \
+                    --description "IMAGE_TAG=${{ steps.build-image.outputs.image_tag }}"
