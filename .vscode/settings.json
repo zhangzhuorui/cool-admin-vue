@@ -13,5 +13,26 @@
 	"editor.defaultFormatter": "esbenp.prettier-vscode",
 	"[scss]": {
 		"editor.defaultFormatter": "esbenp.prettier-vscode"
-	}
+	},
+	"i18n-ally.localesPaths": [
+		"src/plugins/i18n",
+		"src/plugins/crud/locales",
+		"src/plugins/dev-tools/locales",
+		"src/plugins/editor-preview/locales",
+		"src/plugins/editor-wang/locales",
+		"src/plugins/excel/locales",
+		"src/plugins/theme/locales",
+		"src/plugins/upload/locales",
+		"packages/crud/src/locale",
+		"src/plugins/view/locales",
+		"packages/crud/types/locale",
+		"src/modules/base/locales",
+		"src/modules/demo/locales",
+		"src/modules/helper/locales",
+		"src/modules/dict/locales",
+		"src/modules/recycle/locales",
+		"src/modules/space/locales",
+		"src/modules/task/locales",
+		"src/modules/user/locales"
+	]
 }

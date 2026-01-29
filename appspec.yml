@@ -1,0 +1,18 @@
+version: 0.0
+os: linux
+files:
+    - source: /deploy/scripts
+      destination: /opt/app/scripts/vue
+hooks:
+    ApplicationStop:
+        - location: deploy/scripts/stop.sh
+          timeout: 60
+          runas: root
+    AfterInstall:
+        - location: deploy/scripts/after_install.sh
+          timeout: 180
+          runas: root
+    ApplicationStart:
+        - location: deploy/scripts/start.sh
+          timeout: 180
+          runas: root
