@@ -27,7 +27,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
 				type: 'admin',
 				proxy,
 				eps: {
-					enable: true
+					enable: false
 				},
 				svg: {
 					skipNames: ['base', 'theme']
