@@ -78,8 +78,12 @@ export default ({ mode }: ConfigEnv): UserConfig => {
 			// 		drop_debugger: true
 			// 	}
 			// },
+			// 针对内存极小机器的优化
+			cssCodeSplit: true,
+			chunkSizeWarningLimit: 2000,
 			sourcemap: isDev,
 			rollupOptions: {
+				maxParallelFileOps: 2, // 限制并行处理文件的数量
 				output: {
 					chunkFileNames: 'static/js/[name]-[hash].js',
 					entryFileNames: 'static/js/[name]-[hash].js',

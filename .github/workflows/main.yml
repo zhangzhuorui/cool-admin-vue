@@ -20,15 +20,19 @@ jobs:
             # 1. 编译前端项目 (pnpm 版)
             - name: Install and Build
               run: |
-                  # 如果 Runner EC2 没装 pnpm，先装一下
+                  # 1. 强制设置 Node.js 堆内存上限为 2048MB (2GB)
+                  # 注意：这需要你已经按照之前的建议开启了 2GB 的 Swap
+                  export NODE_OPTIONS="--max-old-space-size=2048"
+
+                  # 2. 安装 pnpm (如果没装)
                   if ! command -v pnpm &> /dev/null; then
                     sudo npm install -g pnpm
                   fi
 
-                  # 设置内存限制
-                  export NODE_OPTIONS="--max-old-space-size=768"
+                  # 3. 安装依赖 (使用低内存模式)
+                  pnpm install --frozen-lockfile
 
-                  pnpm install
+                  # 4. 执行编译
                   pnpm run build
 
             # 2. 登录 AWS ECR
