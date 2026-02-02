@@ -30,7 +30,7 @@ jobs:
                   fi
 
                   # 3. 安装依赖 (使用低内存模式)
-                  pnpm install --frozen-lockfile
+                  pnpm install
 
                   # 4. 执行编译
                   pnpm run build
