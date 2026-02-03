@@ -7,7 +7,7 @@ on:
 env:
     AWS_REGION: us-east-1
     ECR_REPOSITORY: cool-admin-vue
-    CODEDEPLOY_APP: CoolAdminVue
+    CODEDEPLOY_APP: CoolAdminApp
     CODEDEPLOY_GROUP: Vue-Group
 
 jobs:
