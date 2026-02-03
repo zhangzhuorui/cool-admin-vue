@@ -5,7 +5,7 @@ on:
         branches: [main]
 
 env:
-    AWS_REGION: us-east-2
+    AWS_REGION: us-east-1
     ECR_REPOSITORY: cool-admin-vue
     CODEDEPLOY_APP: CoolAdminVue
     CODEDEPLOY_GROUP: Vue-Group
