@@ -26,9 +26,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
 			cool({
 				type: 'admin',
 				proxy,
-				eps: {
-					enable: false
-				},
+				eps: false,
 				svg: {
 					skipNames: ['base', 'theme']
 				},
@@ -71,7 +69,12 @@ export default ({ mode }: ConfigEnv): UserConfig => {
 			drop: isDev ? [] : ['console', 'debugger']
 		},
 		build: {
-			minify: 'esbuild',
+			minify: 'terser',
+			terserOptions: {
+				compress: {
+					drop_console: true
+				}
+			},
 			// terserOptions: {
 			// 	compress: {
 			// 		drop_console: true,
@@ -83,7 +86,7 @@ export default ({ mode }: ConfigEnv): UserConfig => {
 			chunkSizeWarningLimit: 2000,
 			sourcemap: isDev,
 			rollupOptions: {
-				maxParallelFileOps: 2, // 限制并行处理文件的数量
+				maxParallelFileOps: 1, // 限制并行处理文件的数量
 				output: {
 					chunkFileNames: 'static/js/[name]-[hash].js',
 					entryFileNames: 'static/js/[name]-[hash].js',

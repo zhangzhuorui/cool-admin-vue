@@ -17,32 +17,27 @@ jobs:
             - name: Checkout Code
               uses: actions/checkout@v4
 
-            # 1. 编译前端项目 (pnpm 版)
-            - name: Install and Build
+            # 1. 在宿主机安装依赖并打包 (利用宿主机的 Swap)
+            - name: Install and Build on Host
               run: |
-                  # 1. 强制设置 Node.js 堆内存上限为 2048MB (2GB)
-                  # 注意：这需要你已经按照之前的建议开启了 2GB 的 Swap
-                  export NODE_OPTIONS="--max-old-space-size=2048"
-
-                  # 2. 安装 pnpm (如果没装)
+                  # 设置 pnpm 镜像
                   if ! command -v pnpm &> /dev/null; then
                     sudo npm install -g pnpm
                   fi
 
-                  # 3. 安装依赖 (使用低内存模式)
-                  pnpm install
+                  # 给予 Node 充足的堆内存限制 (2GB)
+                  export NODE_OPTIONS="--max-old-space-size=2048"
 
-                  # 4. 执行编译
+                  pnpm install --frozen-lockfile
                   pnpm run build
 
-            # 2. 登录 AWS ECR
+            # 2. 登录 ECR
             - name: Login to Amazon ECR
               id: login-ecr
               uses: aws-actions/amazon-ecr-login@v2
 
-            # 3. 构建并推送 Docker 镜像
-            - name: Build, Tag, and Push Image
-              id: build-image
+            # 3. 构建 Docker 镜像 (此时 Dockerfile 只是简单的 COPY dist)
+            - name: Build and Push Image
               env:
                   ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
                   IMAGE_TAG: ${{ github.sha }}
@@ -51,7 +46,6 @@ jobs:
                   docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
                   docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
                   docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
-                  echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
 
             # 4. 触发 CodeDeploy
             - name: Trigger CodeDeploy
