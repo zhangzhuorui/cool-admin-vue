@@ -19,8 +19,16 @@ jobs:
 
             - name: Install and Build on Host
               run: |
-                  corepack enable
+                  # 1. 检查并安装 pnpm (跳过 corepack)
+                  if ! command -v pnpm &> /dev/null; then
+                    echo "pnpm not found, installing..."
+                    sudo npm install -g pnpm
+                  fi
+
+                  # 2. 安装依赖
                   pnpm install --frozen-lockfile
+
+                  # 3. 设置内存限制并打包
                   export NODE_OPTIONS="--max-old-space-size=2048"
                   pnpm run build
 
