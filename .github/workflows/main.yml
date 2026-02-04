@@ -5,9 +5,9 @@ on:
         branches: [main]
 
 env:
-    AWS_REGION: us-east-1
+    AWS_REGION: us-east-1 # 确认你的新区域！
     ECR_REPOSITORY: cool-admin-vue
-    CODEDEPLOY_APP: CoolAdminApp
+    CODEDEPLOY_APP: CoolAdminApp # 确认你的新应用名！
     CODEDEPLOY_GROUP: Vue-Group
 
 jobs:
@@ -17,41 +17,32 @@ jobs:
             - name: Checkout Code
               uses: actions/checkout@v4
 
-            # 1. 在宿主机安装依赖并打包 (利用宿主机的 Swap)
             - name: Install and Build on Host
               run: |
-                  # 设置 pnpm 镜像
-                  if ! command -v pnpm &> /dev/null; then
-                    sudo npm install -g pnpm
-                  fi
-
-                  # 给予 Node 充足的堆内存限制 (2GB)
-                  export NODE_OPTIONS="--max-old-space-size=2048"
-
+                  corepack enable
                   pnpm install --frozen-lockfile
+                  export NODE_OPTIONS="--max-old-space-size=2048"
                   pnpm run build
 
-            # 2. 登录 ECR
             - name: Login to Amazon ECR
               id: login-ecr
               uses: aws-actions/amazon-ecr-login@v2
 
-            # 3. 构建 Docker 镜像 (此时 Dockerfile 只是简单的 COPY dist)
-            - name: Build and Push Image
+            - name: Build, Tag, and Push Image
               env:
                   ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
                   IMAGE_TAG: ${{ github.sha }}
               run: |
+                  # 这一步会去找 dist 文件夹
                   docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
                   docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:latest .
                   docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
                   docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-            # 4. 触发 CodeDeploy
             - name: Trigger CodeDeploy
               run: |
                   aws deploy create-deployment \
                     --application-name ${{ env.CODEDEPLOY_APP }} \
                     --deployment-group-name ${{ env.CODEDEPLOY_GROUP }} \
                     --github-location repository=${{ github.repository }},commitId=${{ github.sha }} \
-                    --description "IMAGE_TAG=${{ steps.build-image.outputs.image_tag }}"
+                    --description "IMAGE_TAG=${{ github.sha }}"
