@@ -7,7 +7,7 @@ IMAGE_TAG=$(echo $DESCRIPTION | cut -d'=' -f2)
 
 # 2. 获取 AWS 信息
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-REGION="us-east-1"  # 如果不是这个区请修改
+REGION="us-east-2"  # 如果不是这个区请修改
 ECR_URL="$AWS_ACCOUNT_ID.dkr.ecr.$REGION.amazonaws.com"
 REPO_NAME="cool-admin-vue" 
 

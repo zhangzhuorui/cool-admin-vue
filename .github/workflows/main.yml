@@ -5,7 +5,7 @@ on:
         branches: [main]
 
 env:
-    AWS_REGION: us-east-1 # 确认你的新区域！
+    AWS_REGION: us-east-2 # 确认你的新区域！
     ECR_REPOSITORY: cool-admin-vue
     CODEDEPLOY_APP: CoolAdminApp # 确认你的新应用名！
     CODEDEPLOY_GROUP: Vue-Group
